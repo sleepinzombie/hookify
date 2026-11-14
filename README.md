@@ -112,6 +112,7 @@ export const Example = () => {
 | [`useImpression`](https://altalyst-solutions.github.io/hookify/hooks/use-impression)                           | Call a callback once an element was visible long enough, for analytics and "mark as read".         |
 | [`useIntersectionObserver`](https://altalyst-solutions.github.io/hookify/hooks/use-intersection-observer)      | Track an element's visibility with an `IntersectionObserver`, with a once option.                  |
 | [`useInterval`](https://altalyst-solutions.github.io/hookify/hooks/use-interval)                               | Declarative `setInterval` that can be paused with `null` and always calls the latest callback.     |
+| [`useIsStuck`](https://altalyst-solutions.github.io/hookify/hooks/use-is-stuck)                                | Tell when a `position: sticky` element is stuck, with no scroll listener.                          |
 | [`useIsomorphicLayoutEffect`](https://altalyst-solutions.github.io/hookify/hooks/use-isomorphic-layout-effect) | Drop-in `useLayoutEffect` that falls back to `useEffect` on the server, without SSR warnings.      |
 | [`useLatest`](https://altalyst-solutions.github.io/hookify/hooks/use-latest)                                   | Keep a stable ref to the latest value or callback to avoid stale closures.                         |
 | [`useMediaQuery`](https://altalyst-solutions.github.io/hookify/hooks/use-media-query)                          | Subscribe to a CSS media query and get a hydration-safe boolean that tracks whether it matches.    |

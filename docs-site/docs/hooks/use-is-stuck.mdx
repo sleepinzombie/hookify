@@ -1,0 +1,189 @@
+---
+title: useIsStuck
+sidebar_position: 34
+---
+
+import HookDemo from "@site/src/components/HookDemo";
+import CodeBlock from "@theme/CodeBlock";
+
+import actionBarSource from "!!raw-loader!@site/src/hook-examples/use-is-stuck/ActionBar";
+import appSource from "!!raw-loader!@site/src/hook-examples/use-is-stuck/App";
+import stackedBarsSource from "!!raw-loader!@site/src/hook-examples/use-is-stuck/StackedBars";
+import stickyHeaderSource from "!!raw-loader!@site/src/hook-examples/use-is-stuck/StickyHeader";
+import hookSource from "!!raw-loader!../../../src/hooks/use-is-stuck.ts";
+
+# useIsStuck
+
+Tells you whether a `position: sticky` element is currently stuck, so you can
+style it differently only while it is pinned, for example with a shadow under a
+sticky header. CSS has no selector for this state, and a scroll listener would
+run on every scroll event. `useIsStuck` uses an `IntersectionObserver` on a
+hidden marker next to your element, so your component only re-renders when the
+state flips.
+
+It differs from [`useIntersectionObserver`](./use-intersection-observer.mdx),
+which reports whether an element is visible. A sticky element stays visible
+while it is stuck, so visibility cannot tell you this.
+
+## When to use it
+
+- A shadow or border under a sticky header or toolbar once content scrolls
+  beneath it.
+- A bottom action bar that floats over a long form and looks flat at the end.
+- Sticky table headers, side navigation and section titles that change style
+  while pinned.
+- Showing a compact version of a header while it is stuck.
+
+## Demo
+
+Scroll each box. The first shows a header gaining a shadow while it is stuck to
+the top of a scroll container. The second uses `side: "bottom"` for an action
+bar. The third stacks two bars and uses `offset` for the one that sticks below
+the other.
+
+<HookDemo
+  files={{
+    "/App.tsx": appSource,
+    "/StickyHeader.tsx": stickyHeaderSource,
+    "/ActionBar.tsx": actionBarSource,
+    "/StackedBars.tsx": stackedBarsSource,
+  }}
+  activeFile="/StickyHeader.tsx"
+/>
+
+## Signature
+
+```ts
+type UseIsStuckSide = "top" | "bottom" | "left" | "right";
+
+interface UseIsStuckOptions {
+  side?: UseIsStuckSide;
+  offset?: number;
+  root?: Element | Document | null;
+  enabled?: boolean;
+}
+
+interface UseIsStuckResult<T extends Element> {
+  ref: (element: T | null) => void;
+  isStuck: boolean;
+}
+
+function useIsStuck<T extends Element = HTMLElement>(
+  options?: UseIsStuckOptions
+): UseIsStuckResult<T>;
+```
+
+| Option    | Type                                     | Description                                                                                                                                        |
+| --------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `side`    | `"top" \| "bottom" \| "left" \| "right"` | The edge the element sticks to, matching its CSS property. Defaults to `"top"`.                                                                    |
+| `offset`  | `number`                                 | The sticky distance from that edge in pixels, for example `64` for `top: 64px`. Negative or non-finite values are treated as `0`. Defaults to `0`. |
+| `root`    | `Element \| Document \| null`            | The scroll container the element sticks inside. Defaults to the browser viewport.                                                                  |
+| `enabled` | `boolean`                                | Set to `false` to stop observing. `isStuck` is `false` while disabled. Defaults to `true`.                                                         |
+
+**Returns:** an object with:
+
+- `ref`: a callback ref to attach to the sticky element.
+- `isStuck`: `true` while the element is pinned at its sticky edge, otherwise
+  `false`.
+
+## Usage notes
+
+- **A callback ref.** It works for elements that mount later, render
+  conditionally or are swapped for another one. The returned function is stable
+  across renders. To combine it with another ref, call both from a function
+  ref: `ref={(el) => { stuckRef(el); myRef.current = el; }}`.
+- **Match `side` and `offset` to your CSS.** `side` is the property you set
+  (`top`, `bottom`, `left`, `right`) and `offset` is its value in pixels. An
+  element with `position: sticky; top: 64px` needs `offset: 64`. The hook does
+  not read your styles, so keep the two in sync, for example by using one
+  constant for both.
+- **Scroll containers.** When the element sticks inside a scrollable element
+  rather than the page, pass that element as `root`. Store it in state with a
+  callback ref (`ref={setRoot}`), as the demos do, so the hook re-observes once
+  it mounts.
+- **Re-renders only on change.** The state flips when the element becomes
+  pinned or is released, not on every scroll event.
+- **How it works.** A sticky element is always visible, so its own position
+  cannot tell you whether it was pushed from where it would be without
+  stickiness. The hook inserts a zero-size, `aria-hidden` `<div>` (a sentinel)
+  next to the element, where the element would sit in normal flow, and observes
+  it. The element is stuck once that marker has scrolled past the sticky edge.
+  The marker is removed on cleanup, and it is only added after mount, so it
+  never causes a hydration mismatch.
+- **The marker is a sibling.** In a normal block layout it takes no space. In a
+  flex or grid parent it counts as one more child. A `gap` makes `isStuck` flip
+  about one gap earlier than the element pins, and `:nth-child` selectors or
+  explicit grid placement can notice it. Without a `gap` the result is exact.
+- **Horizontal sides.** `left` and `right` are meant for an element in a flex
+  row, where the marker sits right next to it. In other layouts the marker may
+  not line up with the element, so prefer `top` and `bottom` there.
+- **Scrolled out by its container.** When the sticky element's container ends,
+  the element is released and scrolls out of view past the sticky edge. It
+  keeps reporting `true` while its marker is beyond that edge.
+- **The initial value.** `isStuck` is `false` on the server, on the first
+  render, and until the browser reports the element's position, right after it
+  mounts. An element that is already stuck when it mounts, for example after a
+  scroll restoration, switches to `true` right away.
+- **Disabling.** `enabled: false` disconnects the observer and `isStuck` is
+  `false`. Turn it back on to measure again.
+- **Server rendering and unsupported browsers.** Nothing runs on the server.
+  Where `IntersectionObserver` is unavailable `isStuck` stays `false`.
+- **Cleanup.** The observer is disconnected on unmount, when the element or an
+  option changes, and when `enabled` becomes `false`.
+- **Testing.** jsdom does not provide `IntersectionObserver`, so mock it and
+  call its callback with an entry that has `boundingClientRect` and
+  `rootBounds`, wrapped in `act`.
+- Safe under React `StrictMode`.
+
+## Examples
+
+```tsx
+// Add a shadow to a sticky header while it is pinned to the top
+const { ref, isStuck } = useIsStuck<HTMLElement>();
+
+return (
+  <header
+    ref={ref}
+    style={{
+      position: "sticky",
+      top: 0,
+      boxShadow: isStuck ? "0 2px 8px rgba(0, 0, 0, 0.2)" : "none",
+    }}
+  >
+    Title
+  </header>
+);
+```
+
+```tsx
+// A bottom action bar, and a header that sticks 64px from the top
+const bar = useIsStuck<HTMLDivElement>({ side: "bottom" });
+const header = useIsStuck<HTMLDivElement>({ offset: 64 });
+```
+
+```tsx
+// A sticky table header inside a scrollable container
+const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
+const { ref, isStuck } = useIsStuck<HTMLTableRowElement>({ root: scroller });
+```
+
+```tsx
+// Build your own helper on top, which toggles a data attribute
+const useStickyAttribute = <T extends HTMLElement>(
+  options?: UseIsStuckOptions
+) => {
+  const { ref, isStuck } = useIsStuck<T>(options);
+  return { ref, "data-stuck": isStuck || undefined };
+};
+```
+
+## Hook source
+
+<details>
+  <summary>
+    View <code>useIsStuck</code> source
+  </summary>
+  <CodeBlock language="tsx" title="use-is-stuck.ts">
+    {hookSource}
+  </CodeBlock>
+</details>

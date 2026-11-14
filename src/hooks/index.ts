@@ -14,6 +14,7 @@ export * from "./use-event-listener";
 export * from "./use-impression";
 export * from "./use-intersection-observer";
 export * from "./use-interval";
+export * from "./use-is-stuck";
 export * from "./use-isomorphic-layout-effect";
 export * from "./use-latest";
 export * from "./use-media-query";
